@@ -1,2 +1,2 @@
 # Arduino-Cat-Console
-This toy project was started to both automate the training and entertainment of my cat as well as to test cats' intelligence in visual pattern discrimination and memorization.  
+This toy project was started to both automate the training and entertainment of my cat as well as to more generally test cats' intelligence in visual pattern discrimination and memorization. As a long term goal, it is my hope that this project represents the beginnings of a rigorous experimental investigation that determines once and for all whether the domestic cat can learn to play tic-tac-toe (also known as juego del gato). 
