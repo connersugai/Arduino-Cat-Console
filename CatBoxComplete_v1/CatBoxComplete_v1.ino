@@ -50,10 +50,22 @@ int bar = 0;                  //counter for loading bar position
 int clicks = 1;               //the currently selected stage (the number of button presses + 1)
 int modeCount = 4;            //the number of active modes
 bool loaded = false;          //a toggle to control program's switch from stage select loop to test run loop
+//for run stage specific timing and display
 unsigned long stageLoops = 0; //a simple counter of stageLoops (currently used to capture stageStart time only during first stage loop)
+bool displayStartPhase = true;     //a toggle for timing symbol display
+bool waitStartPhase  = true;      //a toggle for timing wait time periods
+long baseWait = 5000;         //the default wait time between symbol displays
+long baseDisplay = 3000;      //the base, max display time of a symbol without a button press
+int wrongCount = 0;           //the number of times the button was clicked on the wrong symbol
+int whiffCount = 0;           //the number of times the correct symbol was shown with no response
+float rightART = 0;           //the average reaction time (ART) of successful presses
+float wrongART = 0;           //the average reaction time (ART) to make a wrong press
+long rightReaction = 0;       //a var to hold the most recent successful response reaction time
+long wrongReaction = 0;       //a var to hold the most recent incorrect response reaction time. 
 
 //timing
 unsigned long previousTime = 0; //previousTime storage for stage select button checking
+unsigned long previousTime2 = 0; //and extra var for holding a time stamp in cases where the OG previousTime still needs to be compared
 const long loadInterval = 100;  //the loading bar spacing across millis()
 unsigned long lastDebounceTime=0;   //last time the output pin was toggled
 unsigned long debounceDelay = 50;   //the debounce time; increase if the output flickers
@@ -340,7 +352,7 @@ void winScreen(int toggle) {
   lcd.print("ms");
 }
 
-//function to check for button press during run, and count chomp/return updated last debounce time of click too
+//function to check for button press during run, and count chomp/return updated last debounce time (time of click) too
 unsigned long clickChecknChomp(){
   if(blockSymbol == false){
     if(digitalRead(buttonPin) == LOW && triggerState == 0){
@@ -538,8 +550,97 @@ void loop() {
      * Stage 2: Only simple X is shown (3 seconds), nothing is shown (5 seconds), simple X is rewarded
      */
     if(clicks ==2){
-    lcd.setCursor(0,0);
-    lcd.print("THIS RUNSCREEN 2");
+      runScreen1(); //update screen, using this as a filler until I get the stage working then will make a new run screen to display the additional data too
+      if(stageLoops == 0){
+        stageStart = millis(); //save stage start time upfront
+      }
+      //the stage starts with a smaller delay without symbol, I use baseDisplay out of convenience
+      if(millis()-stageStart >= baseDisplay){
+        if(displayStartPhase == true){
+          
+          Serial.println("displayStartPhase time taken and blocks self.");
+          
+          previousTime = millis();  //take the time the symbol begins
+          xNormLm();                //the symbol begins
+          displayStartPhase = false;    //turn off for now (to avoid taking time and displaying every loop
+        }
+
+        if(displayStartPhase == false){
+
+          Serial.println("Begin block checking for clicks during display.");
+          
+          //executing a check for successful clicks while within display time interval
+          if(millis()-previousTime<= baseDisplay){
+
+            Serial.println("Still within display interval");
+            
+            //check for click and respond to hits (within function)
+            unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
+            //blocks input upon a click
+          
+            //no need for motorActionDelay, as the default delay between symbols is plenty of time 
+          }
+          
+          if(millis()-previousTime>baseDisplay){
+
+            Serial.println("the display time has elapsed.");
+            
+            //we have passed the display interval
+            if(waitStartPhase == true){
+
+              Serial.println("waitStartPhase takes time and blocks self.");
+              
+              //take a time stamp for beginning of wait time
+              previousTime2 = millis();
+              lmc.clearDisplay(0);
+              blockSymbol = true;     //block symbol and inputs
+
+              Serial.println("display cleared and set blocksymbol = true for wait time.");
+              
+              //block repeating the above until next wait
+              waitStartPhase = false;
+            }
+            
+            //upon the wait time being satisfied
+            if(millis()-previousTime2 >= baseWait){
+
+              Serial.println("wait time has completed, open up for startphase, clicks and display.");
+              
+              //allow display phase to start
+              displayStartPhase = true;
+              //allow display and input
+              blockSymbol = false;
+              //prime the waitStartPhase for eventual lapse in symbol display time
+              waitStartPhase = true;
+            }
+          }
+          
+        }
+
+        
+      }
+      
+      //completion condition and winscreen
+      if(chomp>=15){
+        stageEnd = millis();                //store time stage was completed
+        totalTime = stageEnd - stageStart;  //calculate total time
+        int toggle = 0;                     //random toggle var with crap placement
+        unsigned long toggleTime = millis();//grabs updated time stamp for tracking toggleDelay
+
+        //rotate stepper one final time to reset? (not necessary but might keep rotations more repeatable w/ engineering inaccuracies atm)
+         myStepper.step(stepsPerRevolution/16);
+         
+        while(true){
+          //twiddles the screen forever while displaying winScreen with animation and totalTime
+          winScreen(toggle);
+          if((millis()-toggleTime)>toggleDelay){
+            toggle = !toggle;
+            toggleTime = millis();
+          }
+        }
+      }
+      stageLoops++;   //ya
+    
     }
 
     /*
@@ -582,5 +683,4 @@ void loop() {
      */
     
   }
-////  lmc.clearDisplay(0);
 }
