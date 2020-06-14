@@ -68,6 +68,7 @@ unsigned long previousTime = 0; //previousTime storage for stage select button c
 unsigned long previousTime2 = 0; //and extra var for holding a time stamp in cases where the OG previousTime still needs to be compared
 const long loadInterval = 100;  //the loading bar spacing across millis()
 unsigned long lastDebounceTime=0;   //last time the output pin was toggled
+unsigned long lastDebounceTime2 =0; //using a seperate var to hold click time for whiff clicks until I've double checked simplifying these two vars won't affect data collection/calculation
 unsigned long debounceDelay = 50;   //the debounce time; increase if the output flickers
 unsigned long motorActionDelay = 500; // pause for treat dispense (presumably munching as well)
 unsigned long stageStart = 0;       //variable to store the exact time the run stage starts
@@ -377,6 +378,26 @@ unsigned long clickChecknChomp(){
   }
 }
 
+//function to check for button press during times when no LED symbol is displayed
+unsigned long whiffClickCheck(){
+  if(blockSymbol == true){
+    if(digitalRead(buttonPin) == LOW && triggerState == 0){
+      if((millis() - lastDebounceTime2)>debounceDelay){
+       
+        triggerState = 1;
+        whiffCount++;
+        lastDebounceTime2 = millis();
+      
+        return lastDebounceTime2; //function spits out time of detected press (return gotta go last, duh)
+      }
+    }else{
+      if(triggerState == 1 && digitalRead(buttonPin) == HIGH){
+        triggerState = 0;
+      }
+    }
+  }
+}
+
 //function for displaying 'O' on LED Matrix
 void circleLm() {
   if(blockSymbol == false){
@@ -550,10 +571,27 @@ void loop() {
      * Stage 2: Only simple X is shown (3 seconds), nothing is shown (5 seconds), simple X is rewarded
      */
     if(clicks ==2){
+      Serial.println("Whiffs: ");
+      Serial.print(whiffCount);
+      Serial.println("");
+      
       runScreen1(); //update screen, using this as a filler until I get the stage working then will make a new run screen to display the additional data too
       if(stageLoops == 0){
         stageStart = millis(); //save stage start time upfront
       }
+
+      /*
+       * might count miss clicks before first symbol is even displayed, 
+       * but will have to make blocksymbol=true upfront to make it work and reset 
+       * blocksymbol = false strategically farther down the conditional flow.
+       * 
+       * The cat will most likely be excitedly clicking prior to the run beginning which isn't necessarily
+       * useful to include in the final whiff count if the LED is the initial visual cue and is considered the start of the run
+       * Eventually, if possible, this data could be used to help train the cat 
+       * to be more precise in both waiting for the formal beginning of the stage/clicking actively only with the LED display illuminated.
+       */
+      //whiffClickCheck();
+      
       //the stage starts with a smaller delay without symbol, I use baseDisplay out of convenience
       if(millis()-stageStart >= baseDisplay){
         if(displayStartPhase == true){
@@ -577,7 +615,10 @@ void loop() {
             //check for click and respond to hits (within function)
             unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
             //blocks input upon a click
-          
+
+            //check for whiff clicks during the remainder of the display time after a successful click and before the full wait time begins
+            whiffClickCheck();
+            
             //no need for motorActionDelay, as the default delay between symbols is plenty of time 
           }
           
@@ -599,6 +640,11 @@ void loop() {
               
               //block repeating the above until next wait
               waitStartPhase = false;
+            }
+
+            //counting miss clicks while waiting
+            if(millis()-previousTime2 < baseWait){
+              whiffClickCheck();
             }
             
             //upon the wait time being satisfied
