@@ -26,7 +26,7 @@ Description: The same basic conditions as Stage 2, however the wait time in betw
 
 Rationale: This should be an easy transition from the previous stage and strengthens the association between successful button presses and the LED display independent of timing. 
 
-### Stage 3.B
+### Stage 3.B \[Complete]
 Purpose: Introduce symbol discrimination earlier to the learning process.
 
 Description: The same display/wait times as Stage 2  (e.g. 3 seconds/5 seconds),  but there is a random (50-50) chance that either an ‘X’ or an ‘O’ is displayed. Only button presses when the ‘X’ is shown will be rewarded.
