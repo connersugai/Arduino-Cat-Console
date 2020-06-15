@@ -51,6 +51,8 @@ int clicks = 1;               //the currently selected stage (the number of butt
 int modeCount = 4;            //the number of active modes
 bool loaded = false;          //a toggle to control program's switch from stage select loop to test run loop
 //for run stage specific timing and display
+int right = 1;                //value to associate with symbol that is rewarded
+int wrong = 0;                //value to associate with symbol that isn't rewarded
 unsigned long stageLoops = 0; //a simple counter of stageLoops (currently used to capture stageStart time only during first stage loop)
 bool displayStartPhase = true;     //a toggle for timing symbol display
 bool waitStartPhase  = true;      //a toggle for timing wait time periods
@@ -58,8 +60,10 @@ long baseWait = 5000;         //the default wait time between symbol displays
 long baseDisplay = 3000;      //the base, max display time of a symbol without a button press
 int wrongCount = 0;           //the number of times the button was clicked on the wrong symbol
 int whiffCount = 0;           //the number of times the correct symbol was shown with no response
-float rightART = 0;           //the average reaction time (ART) of successful presses
-float wrongART = 0;           //the average reaction time (ART) to make a wrong press
+double rightTimes[15] = {};   //an array to store the reaction times of correct presess
+double wrongTimes[30] = {};   //an array to store wrong presses, might need to expand/make a reasonable cutt off where enough wrongs finishes the stage anyway
+double rightART = 0;           //the average reaction time (ART) of successful presses
+double wrongART = 0;           //the average reaction time (ART) to make a wrong press
 long rightReaction = 0;       //a var to hold the most recent successful response reaction time
 long wrongReaction = 0;       //a var to hold the most recent incorrect response reaction time. 
 
@@ -74,7 +78,7 @@ unsigned long motorActionDelay = 500; // pause for treat dispense (presumably mu
 unsigned long stageStart = 0;       //variable to store the exact time the run stage starts
 unsigned long stageEnd = 0;         //variable to store time when final click is made
 unsigned long totalTime = 0;        //variable to store total time to complete a stage
-unsigned long toggleDelay = 400;    //delay for animation on winScreen
+unsigned long toggleDelay = 1000;    //delay for animation on winScreen, longer now to also toggle total time with average response time in stage 2
 
 //byte data for LCD customChars
 //The heart symbol for the 'health bar' that depicts the number of treats left as hollow squares on the runscreen
@@ -353,6 +357,30 @@ void winScreen(int toggle) {
   lcd.print("ms");
 }
 
+//stage 2 test variant 
+void winScreen2(int toggle) {
+  //screen to print upon test completion
+  lcd.setCursor(0,0);
+  //simple two phase animation
+  if(toggle == 0){
+    lcd.print("!*!*        *!*!");
+  }else{
+    lcd.print("$!$!        !$!$");
+  }
+
+  //print average right response time just to the right of initial flashing symbols
+  lcd.setCursor(4,0);
+  lcd.print(" ");
+  lcd.print(movingAverage(right));
+  lcd.print(" ");
+  
+  //bottom row with the total time
+  lcd.setCursor(0,1);
+  lcd.print("Time: ");
+  lcd.print(totalTime);
+  lcd.print("ms");
+}
+
 //function to check for button press during run, and count chomp/return updated last debounce time (time of click) too
 unsigned long clickChecknChomp(){
   if(blockSymbol == false){
@@ -362,6 +390,10 @@ unsigned long clickChecknChomp(){
         triggerState = 1;
         chomp++;
         lastDebounceTime = millis();
+
+        //save reaction time of valid press into array
+        rightTimes[chomp - 1] = lastDebounceTime - previousTime; //previousTime reset in displayStartPhase
+        
         lmc.clearDisplay(0);     //remove symbol 
         blockSymbol = true;      //prevent display until motorActionDelay satisfied
 
@@ -446,6 +478,42 @@ int clickCycle(int x){
       clicks=1;
     }
   return clicks;
+}
+
+//I might be missing something about passing char variables/using strings in conditionals so I'll try not using strings
+//instead the int right = 1; int wrong =0; as seen up above
+//and it worked, for future reference my attempt was:
+/*
+ * double movingAverage(char rightORwrong){
+ * double sum = 0;
+ * if(rightORwrong == "right"){
+ * blahblah} blah blah}
+ * 
+ * movingAverage("right");
+ * 
+ * and the sum was always 0.00 (so it wasn't triggering the conditional properly I guess)
+ */
+
+
+double movingAverage(int rightORwrong){
+  //some conditionals so this average can find and return either moving average
+  double sum = 0;
+  if(rightORwrong == 1){
+    //find sum of all currently stored reaction times (equal to chomp because it counts successes, caps at 15)
+    for(int i = 0; i<chomp;i++){
+      sum = sum + rightTimes[i];
+    }
+    //return average
+    return sum/chomp;
+  }
+
+  if(rightORwrong == 0){
+    for(int i = 0; i < wrongCount; i++){
+      //find sum of all stored wrong reaction times, equal to wrongCount and potentially numerous
+      sum = sum + wrongTimes[i];
+    }
+    return sum/wrongCount;
+  }
 }
 
 void setup() {
@@ -571,9 +639,9 @@ void loop() {
      * Stage 2: Only simple X is shown (3 seconds), nothing is shown (5 seconds), simple X is rewarded
      */
     if(clicks ==2){
-      Serial.println("Whiffs: ");
-      Serial.print(whiffCount);
-      Serial.println("");
+//      Serial.println("Whiffs: ");
+//      Serial.print(whiffCount);
+//      Serial.println("");
       
       runScreen1(); //update screen, using this as a filler until I get the stage working then will make a new run screen to display the additional data too
       if(stageLoops == 0){
@@ -596,7 +664,7 @@ void loop() {
       if(millis()-stageStart >= baseDisplay){
         if(displayStartPhase == true){
           
-          Serial.println("displayStartPhase time taken and blocks self.");
+//          Serial.println("displayStartPhase time taken and blocks self.");
           
           previousTime = millis();  //take the time the symbol begins
           xNormLm();                //the symbol begins
@@ -605,12 +673,12 @@ void loop() {
 
         if(displayStartPhase == false){
 
-          Serial.println("Begin block checking for clicks during display.");
+//          Serial.println("Begin block checking for clicks during display.");
           
           //executing a check for successful clicks while within display time interval
           if(millis()-previousTime<= baseDisplay){
 
-            Serial.println("Still within display interval");
+//            Serial.println("Still within display interval");
             
             //check for click and respond to hits (within function)
             unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
@@ -624,19 +692,19 @@ void loop() {
           
           if(millis()-previousTime>baseDisplay){
 
-            Serial.println("the display time has elapsed.");
+//            Serial.println("the display time has elapsed.");
             
             //we have passed the display interval
             if(waitStartPhase == true){
 
-              Serial.println("waitStartPhase takes time and blocks self.");
+//              Serial.println("waitStartPhase takes time and blocks self.");
               
               //take a time stamp for beginning of wait time
               previousTime2 = millis();
               lmc.clearDisplay(0);
               blockSymbol = true;     //block symbol and inputs
 
-              Serial.println("display cleared and set blocksymbol = true for wait time.");
+//              Serial.println("display cleared and set blocksymbol = true for wait time.");
               
               //block repeating the above until next wait
               waitStartPhase = false;
@@ -650,7 +718,7 @@ void loop() {
             //upon the wait time being satisfied
             if(millis()-previousTime2 >= baseWait){
 
-              Serial.println("wait time has completed, open up for startphase, clicks and display.");
+//              Serial.println("wait time has completed, open up for startphase, clicks and display.");
               
               //allow display phase to start
               displayStartPhase = true;
@@ -678,13 +746,14 @@ void loop() {
          
         while(true){
           //twiddles the screen forever while displaying winScreen with animation and totalTime
-          winScreen(toggle);
+          winScreen2(toggle);
           if((millis()-toggleTime)>toggleDelay){
             toggle = !toggle;
             toggleTime = millis();
           }
         }
       }
+      
       stageLoops++;   //ya
     
     }
