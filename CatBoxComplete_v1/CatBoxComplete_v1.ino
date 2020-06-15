@@ -59,13 +59,10 @@ bool waitStartPhase  = true;      //a toggle for timing wait time periods
 long baseWait = 5000;         //the default wait time between symbol displays
 long baseDisplay = 3000;      //the base, max display time of a symbol without a button press
 int wrongCount = 0;           //the number of times the button was clicked on the wrong symbol
-int whiffCount = 0;           //the number of times the correct symbol was shown with no response
+int whiffCount = 0;           //the number of times the button was pressed with no symbol being shown at all 
+int missCount = 0;            //the number of times the correct symbol was shown and timed out with no response
 double rightTimes[15] = {};   //an array to store the reaction times of correct presess
 double wrongTimes[30] = {};   //an array to store wrong presses, might need to expand/make a reasonable cutt off where enough wrongs finishes the stage anyway
-double rightART = 0;           //the average reaction time (ART) of successful presses
-double wrongART = 0;           //the average reaction time (ART) to make a wrong press
-long rightReaction = 0;       //a var to hold the most recent successful response reaction time
-long wrongReaction = 0;       //a var to hold the most recent incorrect response reaction time. 
 
 //timing
 unsigned long previousTime = 0; //previousTime storage for stage select button checking
@@ -291,6 +288,7 @@ void runScreen1(){
     lcd.print(chomp);
   }
 }
+
 void loadScreen() {
   byte loadTop[]={
     B11111110,
@@ -516,6 +514,112 @@ double movingAverage(int rightORwrong){
   }
 }
 
+//stage two run screen, should basically be the same for all following stages accept without a wrong count because there is only symbol being tested
+void runScreen2(){
+  //prints run screen
+  byte runTop[]={
+    B00000010,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011,
+    B11011011
+  };
+  //blank i guess..
+  byte runBot[]={
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110,
+    B11111110
+  };
+
+  //remove treat sprites in health bar
+  //not sure why the actively replaced sprite fades out sorta but it looks rad
+  //I now pronounce this bug a feature
+  if(chomp >= 1 && chomp <= 15){
+    for(int i=(16-chomp);i<=15;i++){
+      lcd.setCursor(i,0);
+      lcd.write("-");
+    }
+  }
+  //only print top row up until lost sprites
+  lcd.setCursor(0,0);
+  for(int col =0;col<(16-chomp);col++) {
+    lcd.write(runTop[col]);
+  }
+  
+  //checks if chomp has changed
+  if(chompd != chomp){
+    //level the two vars
+    chompd = chomp;
+    //update moving average
+    lcd.setCursor(0,1);
+    lcd.print(movingAverage(right));
+  }
+
+  //print the M (miss) count label
+  lcd.setCursor(7,1);
+  lcd.print("M");
+  lcd.print(missCount);
+  //skip two spaces to leave two digit count space
+  lcd.setCursor(10,1);
+  //print the W(wrong) count label
+  lcd.print("W");
+  lcd.print(wrongCount);
+  //skip two spaces to leave two digit count space
+  lcd.setCursor(13,1);
+  //print the "?" for whiff count label
+  lcd.print("?");
+  lcd.print(whiffCount);
+  
+//  //clear bottom row
+//  if(chomp == 0){
+//      lcd.setCursor(0,1);
+//      for(int col =0;col<16;col++) {
+//      lcd.write(runBot[col]);
+//      }
+//  }
+//  
+//  //keep the single digit count from being repeatedly cleared
+//  if(chomp >=1 && chomp <10){
+//    lcd.setCursor(1,1);
+//    for(int col =1;col<16;col++) {
+//      lcd.write(runBot[col]);
+//    }
+//  }else{
+//    //keep the two digit count from repeatedly clearing
+//      lcd.setCursor(2,1);
+//      for(int col =2;col<16;col++) {
+//      lcd.write(runBot[col]);
+//      }
+//  }
+  
+
+}
+
+
 void setup() {
   //initialized for testing and debugging print outs (may also leave in prints to serial monitor for more fine grained data collection)
   Serial.begin(9600);
@@ -603,9 +707,11 @@ void loop() {
     if(clicks == 1){
       runScreen1(); //update screen
       xNormLm(); //display x
+      
       if(stageLoops == 0){
         stageStart = millis(); //save stage start time upfront
       }
+      
       //check for click and respond to hits (within function)
       unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
       //after motorActionDelay, enable button checking/symbol display
@@ -639,15 +745,15 @@ void loop() {
      * Stage 2: Only simple X is shown (3 seconds), nothing is shown (5 seconds), simple X is rewarded
      */
     if(clicks ==2){
-//      Serial.println("Whiffs: ");
-//      Serial.print(whiffCount);
-//      Serial.println("");
       
-      runScreen1(); //update screen, using this as a filler until I get the stage working then will make a new run screen to display the additional data too
       if(stageLoops == 0){
         stageStart = millis(); //save stage start time upfront
+       //clean out bottom row of lcd for runscreen 
+        lcd.setCursor(0,1);
+        lcd.print("                ");
       }
-
+      
+      runScreen2(); //update screen
       /*
        * might count miss clicks before first symbol is even displayed, 
        * but will have to make blocksymbol=true upfront to make it work and reset 
