@@ -46,6 +46,7 @@ Stepper myStepper(stepsPerRevolution, 8, 10, 9, 11);
 bool blockSymbol = false;     //used to keep symbol from being displayed on led matrix, blocks input at this time as well
 int chomp = 0;                //number of treats in current run dispensed
 int chompd = chomp;           //something to keep track of chomp to monitor change
+int missedCheck = chomp;      //something to use for counting missed rewarded click opportunities
 int bar = 0;                  //counter for loading bar position
 int clicks = 1;               //the currently selected stage (the number of button presses + 1)
 int modeCount = 4;            //the number of active modes
@@ -349,30 +350,6 @@ void winScreen(int toggle) {
   }else{
     lcd.print("$!$!CONGRATS!$!$");
   }
-  lcd.setCursor(0,1);
-  lcd.print("Time: ");
-  lcd.print(totalTime);
-  lcd.print("ms");
-}
-
-//stage 2 test variant 
-void winScreen2(int toggle) {
-  //screen to print upon test completion
-  lcd.setCursor(0,0);
-  //simple two phase animation
-  if(toggle == 0){
-    lcd.print("!*!*        *!*!");
-  }else{
-    lcd.print("$!$!        !$!$");
-  }
-
-  //print average right response time just to the right of initial flashing symbols
-  lcd.setCursor(4,0);
-  lcd.print(" ");
-  lcd.print(movingAverage(right));
-  lcd.print(" ");
-  
-  //bottom row with the total time
   lcd.setCursor(0,1);
   lcd.print("Time: ");
   lcd.print(totalTime);
@@ -769,22 +746,18 @@ void loop() {
       //the stage starts with a smaller delay without symbol, I use baseDisplay out of convenience
       if(millis()-stageStart >= baseDisplay){
         if(displayStartPhase == true){
-          
-//          Serial.println("displayStartPhase time taken and blocks self.");
-          
+                    
           previousTime = millis();  //take the time the symbol begins
           xNormLm();                //the symbol begins
           displayStartPhase = false;    //turn off for now (to avoid taking time and displaying every loop
+
+          missedCheck = chomp; //record the chomp count at beginning of display time
         }
 
         if(displayStartPhase == false){
-
-//          Serial.println("Begin block checking for clicks during display.");
           
           //executing a check for successful clicks while within display time interval
           if(millis()-previousTime<= baseDisplay){
-
-//            Serial.println("Still within display interval");
             
             //check for click and respond to hits (within function)
             unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
@@ -798,19 +771,18 @@ void loop() {
           
           if(millis()-previousTime>baseDisplay){
 
-//            Serial.println("the display time has elapsed.");
-            
             //we have passed the display interval
             if(waitStartPhase == true){
 
-//              Serial.println("waitStartPhase takes time and blocks self.");
-              
               //take a time stamp for beginning of wait time
               previousTime2 = millis();
               lmc.clearDisplay(0);
               blockSymbol = true;     //block symbol and inputs
 
-//              Serial.println("display cleared and set blocksymbol = true for wait time.");
+              //after display time has elapsed, count missed if no successful click
+              if(missedCheck == chomp){
+                missCount++; //put it in this conditional so it only counts once after a baseDisplay time out
+              }
               
               //block repeating the above until next wait
               waitStartPhase = false;
@@ -823,8 +795,6 @@ void loop() {
             
             //upon the wait time being satisfied
             if(millis()-previousTime2 >= baseWait){
-
-//              Serial.println("wait time has completed, open up for startphase, clicks and display.");
               
               //allow display phase to start
               displayStartPhase = true;
@@ -844,15 +814,22 @@ void loop() {
       if(chomp>=15){
         stageEnd = millis();                //store time stage was completed
         totalTime = stageEnd - stageStart;  //calculate total time
+
+        runScreen2(); //last update of runscreen to include last response time and stuff
+        
         int toggle = 0;                     //random toggle var with crap placement
         unsigned long toggleTime = millis();//grabs updated time stamp for tracking toggleDelay
 
         //rotate stepper one final time to reset? (not necessary but might keep rotations more repeatable w/ engineering inaccuracies atm)
-         myStepper.step(stepsPerRevolution/16);
-         
+        myStepper.step(stepsPerRevolution/16);
+       
+        delay(5000);//A DELAY!!! ya, total time already calculate so we can leave some time to catch the runScreen data
+
+        lcd.setCursor(0,1);
+        lcd.print("                "); //clear bottom row for totalTime print
         while(true){
           //twiddles the screen forever while displaying winScreen with animation and totalTime
-          winScreen2(toggle);
+          winScreen(toggle);
           if((millis()-toggleTime)>toggleDelay){
             toggle = !toggle;
             toggleTime = millis();
