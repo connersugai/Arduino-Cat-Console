@@ -19,7 +19,7 @@ Description: The same simple ‘X’ is shown for a set time (e.g. three seconds
 
 Rationale: The cat must also learn that the button isn’t just a wand for summoning snacks and is in actuality associated with the LED matrix display, specifically this repeated symbol ‘X.’
 
-### Stage 3.A
+### Stage 3.A [Benched]
 Purpose: Introduce random timing earlier to the learning process.
 
 Description: The same basic conditions as Stage 2, however the wait time in between displays is now a random variable that is normally distributed (Two parameters, maybe the mean is kept at the previous wait time (e.g. 5 seconds) and the standard deviation is played with to generate desired variability. 
