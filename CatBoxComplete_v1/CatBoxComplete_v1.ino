@@ -64,6 +64,7 @@ int whiffCount = 0;           //the number of times the button was pressed with 
 int missCount = 0;            //the number of times the correct symbol was shown and timed out with no response
 double rightTimes[15] = {};   //an array to store the reaction times of correct presess
 double wrongTimes[30] = {};   //an array to store wrong presses, might need to expand/make a reasonable cutt off where enough wrongs finishes the stage anyway
+int flip = 1;                 //var to store the outcome of random(0,2) for symbol display choice
 
 //timing
 unsigned long previousTime = 0; //previousTime storage for stage select button checking
@@ -385,6 +386,31 @@ unsigned long clickChecknChomp(){
   }
 }
 
+unsigned long wrongClickCheck(){
+  if(blockSymbol == false){
+    if(digitalRead(buttonPin) == LOW && triggerState == 0){
+      if((millis() - lastDebounceTime)>debounceDelay){
+       
+        triggerState = 1;
+        wrongCount++;
+        lastDebounceTime = millis();
+
+        //save reaction time of wrong press into array
+        wrongTimes[wrongCount - 1] = lastDebounceTime - previousTime; //previousTime reset in displayStartPhase
+        
+        //don't clear display but do block further inputs as we only have an initial right time to compare to this 
+        blockSymbol = true;      //prevent display until motorActionDelay satisfied
+        
+        return lastDebounceTime; //function spits out time of detected press (return gotta go last, duh)
+      }
+    }else{
+      if(triggerState == 1 && digitalRead(buttonPin) == HIGH){
+        triggerState = 0;
+      }
+    }
+  }
+}
+
 //function to check for button press during times when no LED symbol is displayed
 unsigned long whiffClickCheck(){
   if(blockSymbol == true){
@@ -679,6 +705,9 @@ void loop() {
   //stage select has been locked in and test begins
   if(loaded==true){
     
+    //spice up the random seed every stage run loop
+    randomSeed(analogRead(A0));
+    
     //Stage 1: Only simple X is shown, constantly, simple X is rewarded
     //constantly lit "X" (symbol temporarily clears for motor operation until system is ready again)
     if(clicks == 1){
@@ -842,11 +871,150 @@ void loop() {
     }
 
     /*
-     * Stage 3: at random, simple X or large O is shown (3 seconds), nothing is shown (5 seconds), simple x is rewarded
+     * Stage 3 (B) discrimination introduced first before random wait times -
+     * at random, simple X or large O is shown (3 seconds), nothing is shown (5 seconds), 
+     * simple x is rewarded
      */
     if(clicks ==3){
-    lcd.setCursor(0,0);
-    lcd.print("THIS RUNSCREEN 3");
+      
+      if(stageLoops == 0){
+        stageStart = millis(); //save stage start time upfront
+       //clean out bottom row of lcd for runscreen 
+        lcd.setCursor(0,1);
+        lcd.print("                ");
+      }
+      
+      runScreen2(); //update screen
+      
+      /*
+       * might count miss clicks before first symbol is even displayed, 
+       * but will have to make blocksymbol=true upfront to make it work and reset 
+       * blocksymbol = false strategically farther down the conditional flow.
+       * 
+       * The cat will most likely be excitedly clicking prior to the run beginning which isn't necessarily
+       * useful to include in the final whiff count if the LED is the initial visual cue and is considered the start of the run
+       * Eventually, if possible, this data could be used to help train the cat 
+       * to be more precise in both waiting for the formal beginning of the stage/clicking actively only with the LED display illuminated.
+       */
+      //whiffClickCheck();
+      
+      //the stage starts with a smaller delay without symbol, I use baseDisplay out of convenience
+      if(millis()-stageStart >= baseDisplay){
+        if(displayStartPhase == true){
+          //flip for symbol to be shown
+          flip = random(0,2);
+          //REWARDED SYMBOL---VVVVV-----------------------------------------------------------------------
+          if(flip == 1){
+            xNormLm();                
+          }
+          //WRONG SYMBOL---VVVVV--------------------------------------------------------------------------
+          if(flip == 0){
+            circleLm();         
+          }
+          
+          previousTime = millis();  //take the time the symbol begins
+          
+          displayStartPhase = false;    //turn off for now (to avoid taking time and displaying every loop
+
+          missedCheck = chomp; //record the chomp count at beginning of display time
+        }
+
+        if(displayStartPhase == false){
+          
+          //executing a check for successful clicks while within display time interval
+          if(millis()-previousTime<= baseDisplay){
+
+            if(flip == 1){
+              //check for click and respond to hits (within function)
+              unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
+              //blocks input upon a click
+            }else{
+              unsigned long  goofTime = wrongClickCheck(); //check for wrong click
+            }
+            
+
+            
+            //check for whiff clicks during the remainder of the display time after a successful click and before the full wait time begins
+            if(flip == 1){
+            whiffClickCheck();
+            }
+            //there is no whiff count while the wrong symbol is held for the whole interval
+            //this hopefully allows for emphasis that is does not lead to a reward is the hope
+            
+            //no need for motorActionDelay, as the default delay between symbols is plenty of time 
+          }
+          
+          if(millis()-previousTime>baseDisplay){
+
+            //we have passed the display interval
+            if(waitStartPhase == true){
+
+              //take a time stamp for beginning of wait time
+              previousTime2 = millis();
+              lmc.clearDisplay(0);
+              blockSymbol = true;     //block symbol and inputs (?redundant as its in both clickChecknChomp() and wrongClickCheck())
+
+              //after display time has elapsed, count missed if no successful click
+              if(flip == 1){ 
+                if(missedCheck == chomp){
+                  missCount++; //put it in this conditional so it only counts once after a baseDisplay time out
+                }
+              }
+              
+              //block repeating the above until next wait
+              waitStartPhase = false;
+            }
+
+            //counting miss clicks while waiting
+            if(millis()-previousTime2 < baseWait){
+              whiffClickCheck();
+            }
+            
+            //upon the wait time being satisfied
+            if(millis()-previousTime2 >= baseWait){
+              
+              //allow display phase to start
+              displayStartPhase = true;
+              //allow display and input
+              blockSymbol = false;
+              //prime the waitStartPhase for eventual lapse in symbol display time
+              waitStartPhase = true;
+            }
+          }
+          
+        }
+
+        
+      }
+      
+      //completion condition and winscreen
+      if(chomp>=15){
+        stageEnd = millis();                //store time stage was completed
+        totalTime = stageEnd - stageStart;  //calculate total time
+
+        runScreen2(); //last update of runscreen to include last response time and stuff
+        
+        int toggle = 0;                     //random toggle var with crap placement
+        unsigned long toggleTime = millis();//grabs updated time stamp for tracking toggleDelay
+
+        //rotate stepper one final time to reset? (not necessary but might keep rotations more repeatable w/ engineering inaccuracies atm)
+        myStepper.step(stepsPerRevolution/16);
+       
+        delay(5000);//A DELAY!!! ya, total time already calculate so we can leave some time to catch the runScreen data
+
+        lcd.setCursor(0,1);
+        lcd.print("                "); //clear bottom row for totalTime print
+        while(true){
+          //twiddles the screen forever while displaying winScreen with animation and totalTime
+          winScreen(toggle);
+          if((millis()-toggleTime)>toggleDelay){
+            toggle = !toggle;
+            toggleTime = millis();
+          }
+        }
+      }
+      
+      stageLoops++;   //ya
     }
 
     /*
