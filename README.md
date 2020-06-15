@@ -12,7 +12,7 @@ Description: A simple 'X' is shown, near constantly, and each successful press w
 
 Rationale: For this to go anywhere the cat must first learn that a pushing of the button, specifically when a symbol is displayed, is rewarded. I chose to start with the 'X' because I thought perhaps it was the slightly more distinguishable starting point.
 
-### Stage 2
+### Stage 2 \[Complete]
 Purpose: Help the cat learn to wait for the LED display.
 
 Description: The same simple ‘X’ is shown for a set time (e.g. three seconds max without a response) before dimming for a set period (e.g. five seconds). Only successful clicks made while the ‘X’ is displayed are rewarded.
