@@ -1,15 +1,18 @@
-/*#include <FastIO.h>
-//#include <LiquidCrystal_I2C_ByVac.h>
-//#include <LiquidCrystal_SI2C.h>
-//#include <LiquidCrystal_SR.h>
-//#include <LiquidCrystal_SR1W.h>
-//#include <LiquidCrystal_SR2W.h>
-//#include <LiquidCrystal_SR3W.h>
-//#include <SI2CIO.h>
-//#include <SoftI2CMaster.h>
-*/
-#include <I2CIO.h>
-#include <LCD.h>
+#include <Arduino.h> //including to try out VSCode + PlatformIO
+
+
+// #include <FastIO.h>
+// #include <LiquidCrystal_I2C_ByVac.h>
+// #include <LiquidCrystal_SI2C.h>
+// #include <LiquidCrystal_SR.h>
+// #include <LiquidCrystal_SR1W.h>
+// #include <LiquidCrystal_SR2W.h>
+// #include <LiquidCrystal_SR3W.h>
+// #include <SI2CIO.h>
+// #include <SoftI2CMaster.h>
+
+//#include <I2CIO.h>
+//#include <LCD.h>
 #include <LiquidCrystal_I2C.h>
 #include <Wire.h>
 #include <Stepper.h>
@@ -57,8 +60,8 @@ int wrong = 0;                //value to associate with symbol that isn't reward
 unsigned long stageLoops = 0; //a simple counter of stageLoops (currently used to capture stageStart time only during first stage loop)
 bool displayStartPhase = true;     //a toggle for timing symbol display
 bool waitStartPhase  = true;      //a toggle for timing wait time periods
-long baseWait = 5000;         //the default wait time between symbol displays
-long baseDisplay = 3000;      //the base, max display time of a symbol without a button press
+unsigned long baseWait = 5000;         //the default wait time between symbol displays
+unsigned long baseDisplay = 3000;      //the base, max display time of a symbol without a button press
 int wrongCount = 0;           //the number of times the button was clicked on the wrong symbol
 int whiffCount = 0;           //the number of times the button was pressed with no symbol being shown at all 
 int missCount = 0;            //the number of times the correct symbol was shown and timed out with no response
@@ -384,6 +387,7 @@ unsigned long clickChecknChomp(){
       }
     }
   }
+return 0;
 }
 
 unsigned long wrongClickCheck(){
@@ -409,6 +413,7 @@ unsigned long wrongClickCheck(){
       }
     }
   }
+  return 0;
 }
 
 //function to check for button press during times when no LED symbol is displayed
@@ -429,6 +434,7 @@ unsigned long whiffClickCheck(){
       }
     }
   }
+  return 0;
 }
 
 //function for displaying 'O' on LED Matrix
@@ -515,6 +521,7 @@ double movingAverage(int rightORwrong){
     }
     return sum/wrongCount;
   }
+  return 0.00;
 }
 
 //stage two run screen, should basically be the same for all following stages accept without a wrong count because there is only symbol being tested
@@ -539,24 +546,24 @@ void runScreen2(){
     B11011011
   };
   //blank i guess..
-  byte runBot[]={
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110,
-    B11111110
-  };
+  // byte runBot[]={
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110,
+  //   B11111110
+  // };
 
   //remove treat sprites in health bar
   //not sure why the actively replaced sprite fades out sorta but it looks rad
@@ -625,7 +632,7 @@ void runScreen2(){
 
 void setup() {
   //initialized for testing and debugging print outs (may also leave in prints to serial monitor for more fine grained data collection)
-  Serial.begin(9600);
+  Serial.begin(115200); //temporarily change to try and get serial output on PIO.... 
 
   //set the stepper speed 
   myStepper.setSpeed(rotationsPerMinute);
@@ -707,6 +714,7 @@ void loop() {
     
     //spice up the random seed every stage run loop
     randomSeed(analogRead(A0));
+    Serial.print(stageLoops);
     
     //Stage 1: Only simple X is shown, constantly, simple X is rewarded
     //constantly lit "X" (symbol temporarily clears for motor operation until system is ready again)
@@ -789,7 +797,7 @@ void loop() {
           if(millis()-previousTime<= baseDisplay){
             
             //check for click and respond to hits (within function)
-            unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
+            clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
             //blocks input upon a click
 
             //check for whiff clicks during the remainder of the display time after a successful click and before the full wait time begins
@@ -926,10 +934,10 @@ void loop() {
 
             if(flip == 1){
               //check for click and respond to hits (within function)
-              unsigned long hitTime = clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
+              clickChecknChomp(); //also outputs lastDebounceTime (starts randomly, but after intial value represents the time of click)
               //blocks input upon a click
             }else{
-              unsigned long  goofTime = wrongClickCheck(); //check for wrong click
+              wrongClickCheck(); //check for wrong click
             }
             
 
