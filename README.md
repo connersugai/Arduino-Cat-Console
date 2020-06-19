@@ -1,5 +1,5 @@
 # Arduino-Cat-Console
-This toy project was started to both automate the training and entertainment of my cat as well as to more generally test cats' intelligence in visual pattern discrimination and memorization. As a long term goal, it is my hope that this project represents the beginnings of a rigorous experimental investigation that determines once and for all whether the domestic cat can learn to play tic-tac-toe, also known as juego del gato...
+This project was started to both automate the training and entertainment of my cat as well as to more generally test cats' intelligence in visual pattern discrimination and memorization. As a long term goal, it is my hope that this project represents the beginnings of a rigorous experimental investigation that determines once and for all whether the domestic cat can learn to play tic-tac-toe, also known as juego del gato...
 
 Disclaimer: This is my first forray into using Git (not to mention C++) and my code is far from clearly organized and optomized so all feedback, critiques, and contributions are more than welcome. 
 
@@ -53,14 +53,24 @@ Rationale: This the natural progression from either option A or B for Stage 3, w
 
 ## The Basic Physical Build
 All components used were available in Elegoo’s “The Most Complete Starter Kit for MEGA2560” with the exception of the I2C/IIC serial interface adapter/backpack for the 1602 LCD screen. It should be noted that an Arduino UNO has enough digital output pins for this build as well, I was just using what I had at the moment. 
+
 *	**Solderless Bread Board** - Used mainly for the secondary power supply as well as for organizing other connections and adding stuff.
+
 *	**Push Button** - Real classic. Put in the top of a small card board box with a lever/pressure pad to make it sensitive to the slightest paw pressure. Pro tip: cut a hole in the top of the small cardboard box (I used a small box from a pair of earrings) just below the button. The box itself will help to project the noise of the button being pressed which creates two clear clicks with different tones. This mimics the role of a clicker used in hand training by serving as a clear and consistent cue for the target behavior. Timing is important but it could be no more precise in this arrangement as this ensures it sounds EXACTLY as the cat correctly taps the pad. 
+
 *	**28BYJ-48 Stepper Motor** - Used to dispense treats by rotating a wheel (cardboard) with 16 spokes. 15 treats sit in the empty spaces between the ‘spokes’ with the final open segment serving as the starting point that is initially positioned over the hole that the treats will fall through after each sixteenth of a revolution/correct button press. I mounted it on top of the metal bottom of a Pringles can to both keep it away from prying paws as well as to give the dispenser a chute to output the treats in front of the box that housed everything. The reasoning for the small load count is that in general 10-20 treats (at least of the kind I used) a day is recommended for a single adult cat. Additionally, I also wanted to monitor each run and in my experience many small training sessions spread out across multiple days seems to be a more effective approach when working with cats as opposed to, say, a dog who would be perfectly happy to drill the same target behaviors over and over without getting distracted or bored. 
+
 *	**ULN2003A Stepper Motor Driver** - Used to drive the stepper motor; hooked up to a secondary power source.
-*	**MB 102 Bread Board Power Supply Module** - Accepts an input voltage less than 12 volts (I used a 9V battery) and outputs 3.3V or 5.0V. 
+
+*	**MB 102 Bread Board Power Supply Module** - Accepts an input voltage less than 12 volts and outputs 3.3V or 5.0V. I initially used a 9V battery, but do not make the mistake I did. I erroneously thought this made sense based on a stepper motor demo I did which showed one being used. This will work BRIEFLY, as in like a couple hours, because even the small hobby motor absolutely drains a 9V battery. They draw power even when not moving and a 9V is really just a bunch of 1.5V’s joined together so it will get juiced quickly and you’ll waste batteries and money if you don’t use another power source. Because of this, I used a wall adapter for the power module that the motor was hooked up to and for now I have to power the Arduino with my laptop via its USB port. Ideally some changes can be made so that this is not necessary, but in the interim it does potentially provide a link that can be used to easily collect a lot of fine-grained data as I try to fine-tune the consoles effectiveness when used by a specific cat. 
+
 *	**MAX7219 8x8 Matrix Display Module** - An LED matrix with a common-cathode display driver for displaying the symbols that act as a visual cue for the cat to click the button. 
+
 *	**LCD1602A LCD Display** - Purely for aesthetics/to display data so I don’t have to hook up my computer to see the hits/misses/treats remaining/average response times etc. Also used as a stage selection screen to toggle through the different challenges/difficulties.
+
 *	 **2004 1602 LCD Display IIC/I2C Adapter IIC Serial Interface Adapter** - Can be attached to the LCD so that the only pins you need on the Arduino for display operation is the SDA and SDL pins. It has a built in potentiometer for screen contrast  and a jumper that you can remove to turn off the backlight or swap out for different resistors to change the backlight intensity. 
+
 *	**15ish F-M Dupont Wires** - To connect all the header pins of the various modules to the board/Arduino.
+
 *	**M-M Dupont Wires, Resistors, LED’s, etc.** - Just other useful bits and bobs for all other connections and organization and whatnot. 
 
